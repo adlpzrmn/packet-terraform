@@ -72,6 +72,12 @@ resource "packet_device" "dcos_master" {
   provisioner "local-exec" {
     command = "echo ${format("MASTER_%02d", count.index)}=\"${self.network.0.address}\" >> ips.txt"
   }
+  # FEATURE BEGIN: Integration of "Calico" into "DC/OS" for use with "Docker". 
+  # Capture the IP of the masters in the new variable "ETCD_IP_XX" in case it is necessary to use later
+  provisioner "local-exec" {
+    command = "echo ${format("ETCD_IP_%02d", count.index)}=\"${self.network.0.address}\" >> ips.txt"
+  }
+  # FEATURE END: Integration of "Calico" into "DC/OS" for use with "Docker".
   provisioner "local-exec" {
     command = "while [ ! -f ./do-install.sh ]; do sleep 1; done"
   }
@@ -82,6 +88,21 @@ resource "packet_device" "dcos_master" {
   provisioner "remote-exec" {
     inline = "bash /tmp/do-install.sh master"
   }
+  # FEATURE BEGIN: Integration of "Calico" into "DC/OS" for use with "Docker". 
+  # Requirement 1 for Calico with Mesos. Install etcd as Docker container.
+  provisioner "remote-exec" {
+    inline = [
+      "echo \"[INFO]: **************************************************\"",
+      "echo \"[INFO]: * Install and run etcd in the Docker container: BEGIN\"",
+      "echo \"[INFO]: * ---------------------------------\"",
+      "${count.index == 0 ? "echo \"[INFO]: * Install \\etcd in ${format("MASTER_%02d", count.index)}\"" : "echo \"[WARNING]: * This is not MASTER_00.\"" }",
+      "${count.index == 0 ? "docker run --detach --net=host --name etcd quay.io/coreos/etcd:v2.0.11 --advertise-client-urls \"http://${self.network.2.address}:2379\" --listen-client-urls \"http://${self.network.2.address}:2379,http://127.0.0.1:2379\" 2>/dev/null" : "echo \"[WARNING]: * Not install \\etcd in ${format("MASTER_%02d", count.index)} because this is not MASTER_00\""}",
+      "echo \"[INFO]: * ---------------------------------\"",
+      "echo \"[INFO]: * Install and run etcd in the Docker container: END\"",
+      "echo \"[INFO]: **************************************************\"",
+    ]
+  }
+  # FEATURE END: Integration of "Calico" into "DC/OS" for use with "Docker". 
 }
 
 resource "packet_device" "dcos_agent" {
@@ -109,8 +130,35 @@ resource "packet_device" "dcos_agent" {
   provisioner "remote-exec" {
     inline = "bash /tmp/do-install.sh slave"
   }
-}
+  # FEATURE BEGIN: Integration of "Calico" into "DC/OS" for use with "Docker". 
+  # Requirement 2 for Calico with Mesos.
+  # Calico and Calicoctl install.
+    provisioner "file" {
+    source = "do-install-trace-env.sh"
+    destination = "/tmp/do-install-trace-env.sh"
+  }
 
+  provisioner "file" {
+    source = "do-install-calico-by-user.sh"
+    destination = "/tmp/do-install-calico-by-user.sh"
+  }
+
+  provisioner "file" {
+    source = "do-install-calico-by-root.sh"
+    destination = "/tmp/do-install-calico-by-root.sh"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/do-install-trace-env.sh",
+      "chmod +x /tmp/do-install-calico-by-user.sh",
+      "chmod +x /tmp/do-install-calico-by-root.sh",
+      "bash /tmp/do-install-calico-by-user.sh",
+      "sudo bash /tmp/do-install-calico-by-root.sh ${packet_device.dcos_master.network.2.address}"
+    ]
+  }
+  # FEATURE END: Integration of "Calico" into "DC/OS" for use with "Docker". 
+}
 
 resource "packet_device" "dcos_public_agent" {
   hostname = "${format("${var.dcos_cluster_name}-public-agent-%02d", count.index)}"
@@ -137,4 +185,32 @@ resource "packet_device" "dcos_public_agent" {
   provisioner "remote-exec" {
     inline = "bash /tmp/do-install.sh slave_public"
   }
+  # FEATURE BEGIN: Integration of "Calico" into "DC/OS" for use with "Docker". 
+  # Requirement 2 for Calico with Mesos.
+  # Calico and Calicoctl install.
+    provisioner "file" {
+    source = "do-install-trace-env.sh"
+    destination = "/tmp/do-install-trace-env.sh"
+  }
+
+  provisioner "file" {
+    source = "do-install-calico-by-user.sh"
+    destination = "/tmp/do-install-calico-by-user.sh"
+  }
+
+  provisioner "file" {
+    source = "do-install-calico-by-root.sh"
+    destination = "/tmp/do-install-calico-by-root.sh"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/do-install-trace-env.sh",
+      "chmod +x /tmp/do-install-calico-by-user.sh",
+      "chmod +x /tmp/do-install-calico-by-root.sh",
+      "bash /tmp/do-install-calico-by-user.sh",
+      "sudo bash /tmp/do-install-calico-by-root.sh ${packet_device.dcos_master.network.2.address}"
+    ]
+  }
+  # FEATURE END: Integration of "Calico" into "DC/OS" for use with "Docker". 
 }

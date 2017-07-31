@@ -1,4 +1,4 @@
-*
+/*
 !.gitignore
 !dcos.tf
 !make-files.sh
@@ -6,3 +6,11 @@
 !sample.terraform.tfvars
 !vars.tf
 !README.md
+!deploy.sh
+!conf_env
+**/packet-key
+**/packet-key.pub
+
+
+
+
