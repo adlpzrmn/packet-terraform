@@ -263,6 +263,7 @@ echo "[\$THIS_SCRIPT_NAME] - [INFO]: * ---------------------------------"
 wget -O /opt/calicoctl/calicoctl https://github.com/projectcalico/calicoctl/releases/download/v1.3.0/calicoctl
 chmod +x /opt/calicoctl/calicoctl
 ETCD_ENDPOINTS=http://\$1:2379 calicoctl node run --node-image=quay.io/calico/node:v1.3.0
+ETCD_ENDPOINTS=http://\$1:2379 calicoctl config set --raw=felix IgnoreLooseRPF true
 
 if [[ \$? == 0 ]]; then
     echo "[\$THIS_SCRIPT_NAME] - [INFO]: * Calicoctl and calico components have been installed.";
@@ -274,8 +275,4 @@ echo "[\$THIS_SCRIPT_NAME] - [INFO]: * Install calicoctl and calico components: 
 echo "[\$THIS_SCRIPT_NAME] - [INFO]: * *************************************************"
 EOF
 # FEATURE END: Integration of "Calico" into "DC/OS" for use with "Docker".
-
-
-
-
 
